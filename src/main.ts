@@ -8,6 +8,7 @@ const inputId = document.getElementById("input-id") as HTMLInputElement;
 const inputUrl = document.getElementById("input-url") as HTMLInputElement;
 const inputSize = document.getElementById("input-size") as HTMLInputElement;
 const inputCustom = document.getElementById("input-custom") as HTMLInputElement;
+const printRotationMode = document.getElementById("print-rotation-mode") as HTMLSelectElement;
 const btnGenerate = document.getElementById("btn-generate") as HTMLButtonElement;
 const btnSave = document.getElementById("btn-save") as HTMLButtonElement;
 const btnPrint = document.getElementById("btn-print") as HTMLButtonElement;
@@ -135,7 +136,11 @@ btnPrint.addEventListener("click", async () => {
         const { pageHeightMm } = buildPrintLayout();
         const pdf = await createFinalCorrectPDF();
         const pdfBytes = new Uint8Array(pdf.output('arraybuffer'));
-        await invoke("silent_print", { pdfData: Array.from(pdfBytes), pageHeightMm });
+        await invoke("silent_print", {
+            pdfData: Array.from(pdfBytes),
+            pageHeightMm,
+            printRotationMode: printRotationMode.value
+        });
     } catch (err) { alert("Print Error: " + err); }
     finally { btnPrint.textContent = "Print"; }
 });
