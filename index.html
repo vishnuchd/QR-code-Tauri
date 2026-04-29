@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Generator Pro</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --success: #16a34a;
+      --gray: #64748b;
+      --purple: #9333ea;
+    }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      padding: 30px; 
+      background: #f8fafc; 
+      color: #1e293b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      width: 100%;
+      max-width: 600px;
+    }
+    .grid { 
+      display: grid; 
+      grid-template-columns: 140px 1fr auto; 
+      gap: 15px; 
+      align-items: center; 
+      margin-bottom: 20px; 
+    }
+    input, select { 
+      padding: 10px 12px; 
+      border: 1px solid #cbd5e1; 
+      border-radius: 6px; 
+      font-size: 14px;
+    }
+    #input-size { width: 80px; }
+    .full-width-col { grid-column: span 2; }
+    .button-row { 
+      display: flex; 
+      gap: 12px; 
+      justify-content: center;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+    }
+    button { 
+      padding: 10px 20px; 
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      color: white;
+      transition: all 0.2s;
+    }
+    button:disabled { background: #e2e8f0 !important; color: #94a3b8 !important; cursor: not-allowed; }
+    #btn-get-id { background: var(--gray); font-size: 13px; }
+    #btn-flash { background: #4b5563; }
+    #btn-generate { background: var(--primary); }
+    #btn-save { background: var(--success); }
+    #btn-print { background: var(--purple); }
+
+    #preview-container { 
+      margin-top: 40px;
+      padding: 7mm 0;
+      background: white; 
+      display: none; 
+      width: 103mm; 
+      border: 1px dashed #94a3b8;
+      text-align: center;
+    }
+    #qr-canvas { margin: 0 auto; display: block; }
+    .qr-text-wrap { 
+      margin: 10px auto 0; 
+      word-wrap: break-word; 
+      font-family: 'Courier New', Courier, monospace; 
+      font-size: 12px; 
+      line-height: 1.4;
+      color: #000;
+      text-align: center;
+      padding: 0 5mm;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="text-align:center;">QR Generator</h2>
+    <div class="grid">
+      <label>Serial Port:</label>
+      <select id="port-drop"></select>
+      <button id="btn-get-id">Get ID</button>
+      <label>ID:</label>
+      <input type="text" id="input-id" class="full-width-col" />
+      <label>URL:</label>
+      <input type="text" id="input-url" class="full-width-col" />
+      <label>QR Size (mm):</label>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <input type="number" id="input-size" min="1" max="80" value="40" />
+        <span style="font-size: 12px; color: #64748b;">(Max 80)</span>
+      </div>
+      <div></div>
+      <label>Custom Text:</label>
+      <input type="text" id="input-custom" class="full-width-col" />
+    </div>
+    <div class="button-row">
+      <button id="btn-flash">Flash</button>
+      <button id="btn-generate">Generate QR</button>
+      <button id="btn-save" disabled>Save PDF</button>
+      <button id="btn-print" disabled>Print</button>
+    </div>
+  </div>
+
+  <div id="preview-container">
+    <canvas id="qr-canvas"></canvas>
+    <div id="text-output-1" class="qr-text-wrap"></div>
+    <div id="text-output-2" class="qr-text-wrap" style="margin-top: 5px;"></div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
