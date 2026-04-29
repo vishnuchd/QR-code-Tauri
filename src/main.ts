@@ -37,7 +37,8 @@ function buildPrintLayout() {
 
     const temp = new jsPDF({ unit: "mm" });
     temp.setFontSize(FONT_SIZE);
-    const textWidthMm = PAGE_WIDTH - (MARGIN_MM * 2);
+    // Keep text width aligned to QR width so it stays visually under the QR block.
+    const textWidthMm = sizeMm;
     const lines1 = temp.splitTextToSize(combinedText, textWidthMm);
     const lines2 = temp.splitTextToSize(customText, textWidthMm);
 
