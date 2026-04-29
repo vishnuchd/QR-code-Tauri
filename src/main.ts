@@ -89,16 +89,18 @@ async function createFinalCorrectPDF(): Promise<jsPDF> {
     const canvas = document.getElementById('qr-canvas') as HTMLCanvasElement;
     const imgData = canvas.toDataURL("image/png");
 
-    // Label roll: fixed width 103mm, variable height.
+    // Let jsPDF orientation match geometry to avoid internal width/height swapping.
+    const orientation = PAGE_WIDTH >= pageHeightMm ? "l" : "p";
     const pdf = new jsPDF({
-        orientation: "p",
+        orientation,
         unit: "mm",
         format: [PAGE_WIDTH, pageHeightMm]
     });
 
     pdf.setFontSize(FONT_SIZE);
-    const centerX = PAGE_WIDTH / 2;
-    const qrX = (PAGE_WIDTH - sizeMm) / 2;
+    const actualPageWidth = pdf.internal.pageSize.getWidth();
+    const centerX = actualPageWidth / 2;
+    const qrX = (actualPageWidth - sizeMm) / 2;
 
     // Center QR code horizontally, exactly 2mm from top
     pdf.addImage(imgData, 'PNG', qrX, MARGIN_MM, sizeMm, sizeMm);
