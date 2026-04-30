@@ -120,7 +120,7 @@ async function createFinalCorrectPDF(): Promise<{ pdf: jsPDF; pageWidthMm: numbe
     // Text block on right
     pdf.text(lines1, textCenterX, textStartY, { align: "center" });
     const secondBlockY = textStartY + (lines1.length * LINE_HEIGHT_MM);
-    pdf.text(lines2, textCenterX, secondBlockY, { align: "center" });
+    pdf.text(lines2, textLeftX, secondBlockY, { align: "left" });
 
     return {
         pdf,
