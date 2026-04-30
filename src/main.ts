@@ -108,7 +108,6 @@ async function createFinalCorrectPDF(): Promise<{ pdf: jsPDF; pageWidthMm: numbe
     const qrY = MARGIN_MM + ((contentHeightMm - sizeMm) / 2);
     const textLeftX = qrX + sizeMm + QR_TEXT_GAP_MM;
     const textWidthMm = Math.max(8, actualPageWidth - textLeftX - MARGIN_MM);
-    const textCenterX = textLeftX + (textWidthMm / 2);
     const lines1 = pdf.splitTextToSize(combinedText, textWidthMm);
     const lines2 = pdf.splitTextToSize(customText, textWidthMm);
     const totalTextHeight = (lines1.length + lines2.length) * LINE_HEIGHT_MM;
@@ -118,7 +117,7 @@ async function createFinalCorrectPDF(): Promise<{ pdf: jsPDF; pageWidthMm: numbe
     pdf.addImage(imgData, 'PNG', qrX, qrY, sizeMm, sizeMm);
 
     // Text block on right
-    pdf.text(lines1, textCenterX, textStartY, { align: "center" });
+    pdf.text(lines1, textLeftX, textStartY, { align: "left" });
     const secondBlockY = textStartY + (lines1.length * LINE_HEIGHT_MM);
     pdf.text(lines2, textLeftX, secondBlockY, { align: "left" });
 
