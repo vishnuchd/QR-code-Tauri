@@ -8,7 +8,6 @@ const inputId = document.getElementById("input-id") as HTMLInputElement;
 const inputUrl = document.getElementById("input-url") as HTMLInputElement;
 const inputSize = document.getElementById("input-size") as HTMLInputElement;
 const inputCustom = document.getElementById("input-custom") as HTMLInputElement;
-const printRotationMode = document.getElementById("print-rotation-mode") as HTMLSelectElement;
 const btnGenerate = document.getElementById("btn-generate") as HTMLButtonElement;
 const btnSave = document.getElementById("btn-save") as HTMLButtonElement;
 const btnPrint = document.getElementById("btn-print") as HTMLButtonElement;
@@ -21,6 +20,7 @@ const MAX_QR_SIZE_MM = 80;
 const DEFAULT_QR_SIZE_MM = 40;
 const FONT_SIZE = 10;
 const LINE_HEIGHT_MM = 4.2;
+const QR_TEXT_GAP_MM = 2;
 
 function getValidatedQrSizeMm(): number {
     const parsed = parseInt(inputSize.value, 10);
@@ -37,18 +37,17 @@ function buildPrintLayout() {
 
     const temp = new jsPDF({ unit: "mm" });
     temp.setFontSize(FONT_SIZE);
-    // Keep text width aligned to QR width so it stays visually under the QR block.
     const textWidthMm = sizeMm;
     const lines1 = temp.splitTextToSize(combinedText, textWidthMm);
     const lines2 = temp.splitTextToSize(customText, textWidthMm);
 
     const totalTextLines = lines1.length + lines2.length;
     const totalTextHeight = totalTextLines * LINE_HEIGHT_MM;
-    // Dynamic label width like label_output.pdf, based on requested QR size.
-    const pageWidthMm = sizeMm + (MARGIN_MM * 2);
-    const pageHeightMm = MARGIN_MM + sizeMm + totalTextHeight + MARGIN_MM;
+    const contentHeightMm = Math.max(sizeMm, totalTextHeight);
+    const pageWidthMm = (MARGIN_MM * 2) + sizeMm + QR_TEXT_GAP_MM + textWidthMm;
+    const pageHeightMm = (MARGIN_MM * 2) + contentHeightMm;
 
-    return { sizeMm, combinedText, customText, lines1, lines2, pageWidthMm, pageHeightMm };
+    return { sizeMm, combinedText, customText, lines1, lines2, textWidthMm, totalTextHeight, pageWidthMm, pageHeightMm };
 }
 
 async function refreshPorts() {
@@ -89,34 +88,45 @@ btnGenerate.addEventListener("click", async () => {
     btnPrint.disabled = false;
 });
 
-async function createFinalCorrectPDF(): Promise<jsPDF> {
-    const { sizeMm, lines1, lines2, pageWidthMm, pageHeightMm } = buildPrintLayout();
+async function createFinalCorrectPDF(): Promise<{ pdf: jsPDF; pageWidthMm: number; pageHeightMm: number }> {
+    const { sizeMm, combinedText, customText, pageWidthMm, pageHeightMm } = buildPrintLayout();
     const canvas = document.getElementById('qr-canvas') as HTMLCanvasElement;
     const imgData = canvas.toDataURL("image/png");
 
-    // Force portrait geometry to avoid driver/page pipeline auto-flip.
+    const orientation = pageWidthMm > pageHeightMm ? "l" : "p";
     const pdf = new jsPDF({
-        orientation: "p",
+        orientation,
         unit: "mm",
         format: [pageWidthMm, pageHeightMm]
     });
 
     pdf.setFontSize(FONT_SIZE);
     const actualPageWidth = pdf.internal.pageSize.getWidth();
-    const centerX = actualPageWidth / 2;
-    const qrX = (actualPageWidth - sizeMm) / 2;
+    const actualPageHeight = pdf.internal.pageSize.getHeight();
+    const contentHeightMm = actualPageHeight - (MARGIN_MM * 2);
+    const qrX = MARGIN_MM;
+    const qrY = MARGIN_MM + ((contentHeightMm - sizeMm) / 2);
+    const textLeftX = qrX + sizeMm + QR_TEXT_GAP_MM;
+    const textWidthMm = Math.max(8, actualPageWidth - textLeftX - MARGIN_MM);
+    const textCenterX = textLeftX + (textWidthMm / 2);
+    const lines1 = pdf.splitTextToSize(combinedText, textWidthMm);
+    const lines2 = pdf.splitTextToSize(customText, textWidthMm);
+    const totalTextHeight = (lines1.length + lines2.length) * LINE_HEIGHT_MM;
+    const textStartY = MARGIN_MM + ((contentHeightMm - totalTextHeight) / 2) + LINE_HEIGHT_MM;
 
-    // Center QR code horizontally, exactly 2mm from top
-    pdf.addImage(imgData, 'PNG', qrX, MARGIN_MM, sizeMm, sizeMm);
+    // QR block on left
+    pdf.addImage(imgData, 'PNG', qrX, qrY, sizeMm, sizeMm);
 
-    // Text blocks
-    let currentY = MARGIN_MM + sizeMm + LINE_HEIGHT_MM;
-    pdf.text(lines1, centerX, currentY, { align: "center" });
+    // Text block on right
+    pdf.text(lines1, textCenterX, textStartY, { align: "center" });
+    const secondBlockY = textStartY + (lines1.length * LINE_HEIGHT_MM);
+    pdf.text(lines2, textCenterX, secondBlockY, { align: "center" });
 
-    currentY += (lines1.length * LINE_HEIGHT_MM);
-    pdf.text(lines2, centerX, currentY, { align: "center" });
-
-    return pdf;
+    return {
+        pdf,
+        pageWidthMm: actualPageWidth,
+        pageHeightMm: actualPageHeight
+    };
 }
 
 inputSize.addEventListener("input", () => {
@@ -128,21 +138,22 @@ inputSize.addEventListener("input", () => {
 });
 
 btnSave.addEventListener("click", async () => {
-    const pdf = await createFinalCorrectPDF();
+    const { pdf } = await createFinalCorrectPDF();
     pdf.save("qr-output.pdf");
 });
 
 btnPrint.addEventListener("click", async () => {
     try {
         btnPrint.textContent = "Printing...";
-        const { pageWidthMm, pageHeightMm } = buildPrintLayout();
-        const pdf = await createFinalCorrectPDF();
+        const { pdf, pageWidthMm, pageHeightMm } = await createFinalCorrectPDF();
         const pdfBytes = new Uint8Array(pdf.output('arraybuffer'));
         await invoke("silent_print", {
             pdfData: Array.from(pdfBytes),
             pageWidthMm,
             pageHeightMm,
-            printRotationMode: printRotationMode.value
+            // Keep printer output identical to generated PDF by avoiding
+            // orientation overrides at print time.
+            printRotationMode: "auto"
         });
     } catch (err) { alert("Print Error: " + err); }
     finally { btnPrint.textContent = "Print"; }
