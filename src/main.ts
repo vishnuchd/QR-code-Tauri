@@ -15,7 +15,6 @@ const btnPrint = document.getElementById("btn-print") as HTMLButtonElement;
 const btnGetId = document.getElementById("btn-get-id") as HTMLButtonElement;
 const btnFlash = document.getElementById("btn-flash") as HTMLButtonElement;
 
-const PAGE_WIDTH = 103; // Fixed 103mm width for the roll
 const MARGIN_MM = 2;   // 2mm Top and Bottom margins
 const MIN_QR_SIZE_MM = 1;
 const MAX_QR_SIZE_MM = 80;
@@ -45,9 +44,11 @@ function buildPrintLayout() {
 
     const totalTextLines = lines1.length + lines2.length;
     const totalTextHeight = totalTextLines * LINE_HEIGHT_MM;
+    // Dynamic label width like label_output.pdf, based on requested QR size.
+    const pageWidthMm = sizeMm + (MARGIN_MM * 2);
     const pageHeightMm = MARGIN_MM + sizeMm + totalTextHeight + MARGIN_MM;
 
-    return { sizeMm, combinedText, customText, lines1, lines2, pageHeightMm };
+    return { sizeMm, combinedText, customText, lines1, lines2, pageWidthMm, pageHeightMm };
 }
 
 async function refreshPorts() {
@@ -75,28 +76,29 @@ btnFlash.addEventListener("click", async () => {
 
 btnGenerate.addEventListener("click", async () => {
     const canvas = document.getElementById('qr-canvas') as HTMLCanvasElement;
-    const { sizeMm, combinedText, customText } = buildPrintLayout();
-    const sizePx = sizeMm * 3.78; 
+    const { sizeMm, combinedText, customText, pageWidthMm } = buildPrintLayout();
+    const sizePx = sizeMm * 3.78;
     await QRCode.toCanvas(canvas, combinedText, { width: sizePx, margin: 0 });
-    
+
+    const preview = document.getElementById("preview-container") as HTMLDivElement;
+    preview.style.width = `${pageWidthMm}mm`;
     document.getElementById("text-output-1")!.textContent = combinedText;
     document.getElementById("text-output-2")!.textContent = customText;
-    document.getElementById("preview-container")!.style.display = "block";
+    preview.style.display = "block";
     btnSave.disabled = false;
     btnPrint.disabled = false;
 });
 
 async function createFinalCorrectPDF(): Promise<jsPDF> {
-    const { sizeMm, lines1, lines2, pageHeightMm } = buildPrintLayout();
+    const { sizeMm, lines1, lines2, pageWidthMm, pageHeightMm } = buildPrintLayout();
     const canvas = document.getElementById('qr-canvas') as HTMLCanvasElement;
     const imgData = canvas.toDataURL("image/png");
 
-    // Let jsPDF orientation match geometry to avoid internal width/height swapping.
-    const orientation = PAGE_WIDTH >= pageHeightMm ? "l" : "p";
+    // Force portrait geometry to avoid driver/page pipeline auto-flip.
     const pdf = new jsPDF({
-        orientation,
+        orientation: "p",
         unit: "mm",
-        format: [PAGE_WIDTH, pageHeightMm]
+        format: [pageWidthMm, pageHeightMm]
     });
 
     pdf.setFontSize(FONT_SIZE);
@@ -106,7 +108,7 @@ async function createFinalCorrectPDF(): Promise<jsPDF> {
 
     // Center QR code horizontally, exactly 2mm from top
     pdf.addImage(imgData, 'PNG', qrX, MARGIN_MM, sizeMm, sizeMm);
-    
+
     // Text blocks
     let currentY = MARGIN_MM + sizeMm + LINE_HEIGHT_MM;
     pdf.text(lines1, centerX, currentY, { align: "center" });
@@ -133,11 +135,12 @@ btnSave.addEventListener("click", async () => {
 btnPrint.addEventListener("click", async () => {
     try {
         btnPrint.textContent = "Printing...";
-        const { pageHeightMm } = buildPrintLayout();
+        const { pageWidthMm, pageHeightMm } = buildPrintLayout();
         const pdf = await createFinalCorrectPDF();
         const pdfBytes = new Uint8Array(pdf.output('arraybuffer'));
         await invoke("silent_print", {
             pdfData: Array.from(pdfBytes),
+            pageWidthMm,
             pageHeightMm,
             printRotationMode: printRotationMode.value
         });

@@ -22,13 +22,15 @@ async fn run_flash_command() -> Result<String, String> {
 #[tauri::command]
 async fn silent_print(
     pdf_data: Vec<u8>,
+    page_width_mm: f64,
     page_height_mm: f64,
     print_rotation_mode: Option<String>,
 ) -> Result<String, String> {
     let mut temp_file = NamedTempFile::new().map_err(|e| e.to_string())?;
     temp_file.write_all(&pdf_data).map_err(|e| e.to_string())?;
+    let clamped_width = page_width_mm.clamp(10.0, 500.0);
     let clamped_height = page_height_mm.clamp(10.0, 500.0);
-    let media = format!("Custom.103x{clamped_height:.2}mm");
+    let media = format!("Custom.{clamped_width:.2}x{clamped_height:.2}mm");
 
     // Linux/CUPS label-print fix:
     // 1) force exact media size for cutter length
@@ -67,8 +69,8 @@ async fn silent_print(
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            get_serial_ports, 
-            silent_print, 
+            get_serial_ports,
+            silent_print,
             run_flash_command
         ])
         .run(tauri::generate_context!())
